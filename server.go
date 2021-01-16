@@ -2,10 +2,12 @@
 package statigz
 
 import (
+	"bytes"
 	"compress/gzip"
 	"hash/fnv"
 	"io"
 	"io/fs"
+	"math"
 	"mime"
 	"net/http"
 	"path"
@@ -31,12 +33,33 @@ import (
 // Behavior is similar to http://nginx.org/en/docs/http/ngx_http_gzip_static_module.html and
 // https://github.com/lpar/gzipped, except compressed data can be decompressed for an incapable agent.
 type Server struct {
-	OnError   func(rw http.ResponseWriter, r *http.Request, err error)
+	// OnError controls error handling during Serve.
+	OnError func(rw http.ResponseWriter, r *http.Request, err error)
+
+	// Encodings contains supported encodings, default GzipEncoding.
 	Encodings []Encoding
+
+	// EncodeOnInit encodes files that does not have encoded version on Server init.
+	// This allows embedding uncompressed files and still leverage one time compression
+	// for multiple requests.
+	// Enabling this option can degrade startup performance and memory usage in case
+	// of large embeddings, use with caution.
+	EncodeOnInit bool
 
 	info map[string]fileInfo
 	fs   fs.ReadDirFS
 }
+
+const (
+	// minSizeToEncode is minimal file size to apply encoding in runtime, 1KiB.
+	minSizeToEncode = 1024
+
+	// minCompressionRatio is a minimal compression ratio to serve encoded data, 97%.
+	minCompressionRatio = 0.97
+)
+
+// SkipCompressionExt lists file extensions of data that is already compressed.
+var SkipCompressionExt = []string{".gz", ".br", ".gif", ".jpg", ".png", ".webp"}
 
 // FileServer creates an instance of Server from file system.
 //
@@ -65,7 +88,70 @@ func FileServer(fs fs.ReadDirFS, options ...func(server *Server)) *Server {
 		panic(err)
 	}
 
+	if s.EncodeOnInit {
+		err := s.encodeFiles()
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	return &s
+}
+
+func (s *Server) encodeFiles() error {
+	for _, enc := range s.Encodings {
+		if enc.Encoder == nil {
+			continue
+		}
+
+		for fn, i := range s.info {
+			isEncoded := false
+
+			for _, ext := range SkipCompressionExt {
+				if strings.HasSuffix(fn, ext) {
+					isEncoded = true
+
+					break
+				}
+			}
+
+			if isEncoded {
+				continue
+			}
+
+			if _, found := s.info[fn+enc.FileExt]; found {
+				continue
+			}
+
+			// Skip encoding of small data.
+			if i.size < minSizeToEncode {
+				continue
+			}
+
+			f, err := s.fs.Open(fn)
+			if err != nil {
+				return err
+			}
+
+			b, err := enc.Encoder(f)
+			if err != nil {
+				return err
+			}
+
+			// Skip encoding for non-compressible data.
+			if float64(len(b))/float64(i.size) > minCompressionRatio {
+				continue
+			}
+
+			s.info[fn+enc.FileExt] = fileInfo{
+				hash:    i.hash + enc.FileExt,
+				size:    len(b),
+				content: b[0 : len(b)-1 : len(b)-1],
+			}
+		}
+	}
+
+	return nil
 }
 
 func (s *Server) hashDir(p string) error {
@@ -99,16 +185,24 @@ func (s *Server) hashDir(p string) error {
 
 		s.info[path.Clean(fn)] = fileInfo{
 			hash: strconv.FormatUint(h.Sum64(), 36),
-			size: n,
+			size: int(n),
 		}
 	}
 
 	return nil
 }
 
-func (s *Server) serve(rw http.ResponseWriter, req *http.Request, fn, suf, enc, hash string, cl int64,
+func (s *Server) reader(fn string, info fileInfo) (io.Reader, error) {
+	if info.content != nil {
+		return bytes.NewReader(info.content), nil
+	}
+
+	return s.fs.Open(fn)
+}
+
+func (s *Server) serve(rw http.ResponseWriter, req *http.Request, fn, suf, enc string, info fileInfo,
 	decompress func(r io.Reader) (io.Reader, error)) {
-	if m := req.Header.Get("If-None-Match"); m == hash {
+	if m := req.Header.Get("If-None-Match"); m == info.hash {
 		rw.WriteHeader(http.StatusNotModified)
 
 		return
@@ -120,26 +214,24 @@ func (s *Server) serve(rw http.ResponseWriter, req *http.Request, fn, suf, enc, 
 	}
 
 	rw.Header().Set("Content-Type", ctype)
-	rw.Header().Set("Etag", hash)
+	rw.Header().Set("Etag", info.hash)
 
 	if enc != "" {
 		rw.Header().Set("Content-Encoding", enc)
 	}
 
-	var r io.Reader
-
-	r, err := s.fs.Open(fn + suf)
-	if err != nil {
-		s.OnError(rw, req, err)
-
-		return
-	}
-
-	if cl > 0 {
-		rw.Header().Set("Content-Length", strconv.Itoa(int(cl)))
+	if info.size > 0 {
+		rw.Header().Set("Content-Length", strconv.Itoa(info.size))
 	}
 
 	if req.Method == http.MethodHead {
+		return
+	}
+
+	r, err := s.reader(fn+suf, info)
+	if err != nil {
+		s.OnError(rw, req, err)
+
 		return
 	}
 
@@ -167,6 +259,31 @@ func (s *Server) serve(rw http.ResponseWriter, req *http.Request, fn, suf, enc, 
 	}
 }
 
+func (s *Server) minEnc(accessEncoding string, fn string) (fileInfo, Encoding) {
+	var (
+		minEnc  Encoding
+		minInfo = fileInfo{size: math.MaxInt64}
+	)
+
+	for _, enc := range s.Encodings {
+		if !strings.Contains(accessEncoding, enc.ContentEncoding) {
+			continue
+		}
+
+		info, found := s.info[fn+enc.FileExt]
+		if !found {
+			continue
+		}
+
+		if info.size < minInfo.size {
+			minEnc = enc
+			minInfo = info
+		}
+	}
+
+	return minInfo, minEnc
+}
+
 // ServeHTTP serves static files.
 func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet && req.Method != http.MethodHead {
@@ -180,20 +297,11 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	ae := req.Header.Get("Accept-Encoding")
 
 	if ae != "" {
-		ae = strings.ToLower(ae)
+		minInfo, minEnc := s.minEnc(strings.ToLower(ae), fn)
 
-		for _, enc := range s.Encodings {
-			if !strings.Contains(ae, enc.ContentEncoding) {
-				continue
-			}
-
-			info, found := s.info[fn+enc.FileExt]
-			if !found {
-				continue
-			}
-
+		if minInfo.hash != "" {
 			// Copy compressed data into response.
-			s.serve(rw, req, fn, enc.FileExt, enc.ContentEncoding, info.hash, info.size, nil)
+			s.serve(rw, req, fn, minEnc.FileExt, minEnc.ContentEncoding, minInfo, nil)
 
 			return
 		}
@@ -202,7 +310,7 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// Copy uncompressed data into response.
 	uncompressedInfo, uncompressedFound := s.info[fn]
 	if uncompressedFound {
-		s.serve(rw, req, fn, "", "", uncompressedInfo.hash, uncompressedInfo.size, nil)
+		s.serve(rw, req, fn, "", "", uncompressedInfo, nil)
 
 		return
 	}
@@ -214,13 +322,17 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			continue
 		}
 
-		s.serve(rw, req, fn, enc.FileExt, "", info.hash+"U", 0, enc.Decoder)
+		info.hash += "U"
+		info.size = 0
+		s.serve(rw, req, fn, enc.FileExt, "", info, enc.Decoder)
 
 		return
 	}
 
 	http.NotFound(rw, req)
 }
+
+func (s *Server) _() {}
 
 // Encoding describes content encoding.
 type Encoding struct {
@@ -234,11 +346,15 @@ type Encoding struct {
 	// Decoder is a function that can decode data for an agent that does not accept encoding,
 	// can be nil to disable dynamic decompression.
 	Decoder func(r io.Reader) (io.Reader, error)
+
+	// Encoder is a function that can encode data
+	Encoder func(r io.Reader) ([]byte, error)
 }
 
 type fileInfo struct {
-	hash string
-	size int64
+	hash    string
+	size    int
+	content []byte
 }
 
 // OnError is an option to customize error handling in Server.
@@ -256,5 +372,27 @@ func GzipEncoding() Encoding {
 		Decoder: func(r io.Reader) (io.Reader, error) {
 			return gzip.NewReader(r)
 		},
+		Encoder: func(r io.Reader) ([]byte, error) {
+			res := bytes.NewBuffer(nil)
+			w, err := gzip.NewWriterLevel(res, gzip.BestCompression)
+			if err != nil {
+				return nil, err
+			}
+			_, err = io.Copy(w, r)
+			if err != nil {
+				return nil, err
+			}
+
+			return res.Bytes(), err
+		},
 	}
+}
+
+// EncodeOnInit enables runtime encoding for unencoded files to allow compression
+// for uncompressed embedded files.
+//
+// Enabling this option can degrade startup performance and memory usage in case
+// of large embeddings, use with caution.
+func EncodeOnInit(server *Server) {
+	server.EncodeOnInit = true
 }

@@ -16,7 +16,7 @@ import (
 var v embed.FS
 
 func TestServer_ServeHTTP_found(t *testing.T) {
-	s := statigz.FileServer(v, brotli.AddEncoding)
+	s := statigz.FileServer(v, brotli.AddEncoding, statigz.EncodeOnInit)
 
 	for u, found := range map[string]bool{
 		"/_testdata/favicon.png":         true,
@@ -54,7 +54,7 @@ func TestServer_ServeHTTP_error(t *testing.T) {
 }
 
 func TestServer_ServeHTTP_acceptEncoding(t *testing.T) {
-	s := statigz.FileServer(v, brotli.AddEncoding)
+	s := statigz.FileServer(v, brotli.AddEncoding, statigz.EncodeOnInit)
 
 	req, err := http.NewRequest(http.MethodGet, "/_testdata/deeper/swagger.json", nil)
 	require.NoError(t, err)

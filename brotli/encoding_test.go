@@ -1,6 +1,7 @@
 package brotli_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,4 +19,9 @@ func TestAddEncoding(t *testing.T) {
 	d, err := s.Encodings[0].Decoder(nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, d)
+
+	e, err := s.Encodings[0].Encoder(strings.NewReader(strings.Repeat("A", 10000)))
+	assert.NoError(t, err)
+	assert.NotEmpty(t, e)
+	assert.Less(t, len(e), 100)
 }
