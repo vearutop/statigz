@@ -146,7 +146,7 @@ func (s *Server) encodeFiles() error {
 			s.info[fn+enc.FileExt] = fileInfo{
 				hash:    i.hash + enc.FileExt,
 				size:    len(b),
-				content: b[0 : len(b)-1 : len(b)-1],
+				content: b[0:len(b):len(b)],
 			}
 		}
 	}
