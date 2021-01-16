@@ -21,7 +21,7 @@ func AddEncoding(server *statigz.Server) {
 		},
 		Encoder: func(r io.Reader) ([]byte, error) {
 			res := bytes.NewBuffer(nil)
-			w := brotli.NewWriterLevel(res, brotli.BestCompression)
+			w := brotli.NewWriter(res)
 
 			_, err := io.Copy(w, r)
 			if err != nil {
