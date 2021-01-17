@@ -169,7 +169,8 @@ func TestServer_ServeHTTP_get_gz(t *testing.T) {
 	r, err := gzip.NewReader(rw.Body)
 	assert.NoError(t, err)
 
-	decoded, _ := io.ReadAll(r) // nolint:errcheck // Weird io.UnexpectedEOF here.
+	decoded, err := io.ReadAll(r)
+	assert.NoError(t, err)
 
 	raw, err := ioutil.ReadFile("_testdata/swagger.json")
 	assert.NoError(t, err)

@@ -376,17 +376,15 @@ func GzipEncoding() Encoding {
 			res := bytes.NewBuffer(nil)
 			w := gzip.NewWriter(res)
 
-			_, err := io.Copy(w, r)
-			if err != nil {
+			if _, err := io.Copy(w, r); err != nil {
 				return nil, err
 			}
 
-			err = w.Flush()
-			if err != nil {
+			if err := w.Close(); err != nil {
 				return nil, err
 			}
 
-			return res.Bytes(), err
+			return res.Bytes(), nil
 		},
 	}
 }
