@@ -36,4 +36,5 @@ issues:
         - goerr113
         - noctx
         - funlen
+        - paralleltest
       path: "_test.go"

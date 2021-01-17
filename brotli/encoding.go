@@ -2,6 +2,7 @@
 package brotli
 
 import (
+	"bytes"
 	"io"
 
 	"github.com/andybalholm/brotli"
@@ -17,6 +18,20 @@ func AddEncoding(server *statigz.Server) {
 		ContentEncoding: "br",
 		Decoder: func(r io.Reader) (io.Reader, error) {
 			return brotli.NewReader(r), nil
+		},
+		Encoder: func(r io.Reader) ([]byte, error) {
+			res := bytes.NewBuffer(nil)
+			w := brotli.NewWriterLevel(res, 8)
+
+			if _, err := io.Copy(w, r); err != nil {
+				return nil, err
+			}
+
+			if err := w.Close(); err != nil {
+				return nil, err
+			}
+
+			return res.Bytes(), nil
 		},
 	}
 
