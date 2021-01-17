@@ -24,8 +24,8 @@ are quite important. Previous solutions (for example [`vfsgen`](https://github.c
 with [`httpgzip`](https://github.com/shurcooL/httpgzip)) can optimize performance by storing compressed assets and
 serving them directly to capable user agents. This library implements such functionality for embedded file systems.
 
-> **_NOTE:_** Unfortunately guarding new api with build tags is not a viable option, since it imposes 
-> [issues](https://github.com/golang/go/issues/43400) in older versions of Go.
+> **_NOTE:_** Guarding new api (`embed`) with build tags is not a viable option, since it imposes 
+> [issue](https://github.com/golang/go/issues/43400) in older versions of Go.
 
 ## Example
 
@@ -63,14 +63,6 @@ Behavior is based on [nginx gzip static module](http://nginx.org/en/docs/http/ng
 Static assets have to be manually compressed with additional file extension, e.g. `bundle.js` would
 become `bundle.js.gz` (compressed with gzip) or `index.html` would become `index.html.br` (compressed with brotli).
 
-> **_NOTE:_** Although [`brotli`](https://github.com/google/brotli) has better compression than `gzip` and already
-> has wide support in browsers, it has limitations for non-https servers,
-> see [this](https://bugs.chromium.org/p/chromium/issues/detail?id=452335)
-> and [this](https://bugzilla.mozilla.org/show_bug.cgi?id=1218924).
-
-> **_NOTE:_** `brotli` support is optional. Using `brotli` adds about 260 KB to binary size, that's why it is moved to
-> a separate package.
-
 > **_NOTE:_** [`zopfli`](https://github.com/google/zopfli) provides better compression than `gzip` while being
 > backwards compatible with it.
 
@@ -81,3 +73,23 @@ e.g. `bundle.js`). If uncompressed file is not available, then server would deco
 
 Responses have `ETag` headers (64-bit FNV-1 hash of file contents) to enable caching. Responses that are not dynamically
 decompressed are served with [`http.ServeContent`](https://golang.org/pkg/net/http/#ServeContent) for ranges support.
+
+### Brotli support
+
+Support for `brotli` is optional. Using `brotli` adds about 260 KB to binary size, that's why it is moved to
+a separate package.
+
+> **_NOTE:_** Although [`brotli`](https://github.com/google/brotli) has better compression than `gzip` and already
+> has wide support in browsers, it has limitations for non-https servers,
+> see [this](https://bugs.chromium.org/p/chromium/issues/detail?id=452335)
+> and [this](https://bugzilla.mozilla.org/show_bug.cgi?id=1218924).
+
+### Runtime encoding
+
+Recommended way of embedding assets is to compress assets before the build, so that binary includes `*.gz` or `*.br` files. 
+This can be inconvenient in some cases, there is `EncodeOnInit` option to compress assets in runtime when creating file server.
+Once compressed, assets will be served directly without additional dynamic compression. 
+
+Files with extensions ".gz", ".br", ".gif", ".jpg", ".png", ".webp" are excluded from runtime encoding by default.
+
+> **_NOTE:_** Compressing assets in runtime can degrade startup performance and increase memory usage to prepare and store compressed data.
