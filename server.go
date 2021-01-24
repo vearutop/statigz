@@ -332,8 +332,6 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	http.NotFound(rw, req)
 }
 
-func (s *Server) _() {}
-
 // Encoding describes content encoding.
 type Encoding struct {
 	// FileExt is an extension of file with compressed content, for example ".gz".
