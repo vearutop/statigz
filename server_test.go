@@ -160,6 +160,7 @@ func BenchmarkServer_ServeHTTP(b *testing.B) {
 
 	b.ResetTimer()
 	b.ReportAllocs()
+
 	for i := 0; i < b.N; i++ {
 		rw := httptest.NewRecorder()
 		s.ServeHTTP(rw, req)

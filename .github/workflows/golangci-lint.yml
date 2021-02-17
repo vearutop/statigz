@@ -9,6 +9,9 @@ on:
   pull_request:
 jobs:
   golangci:
+    strategy:
+      matrix:
+        go-version: [1.16.x]
     name: golangci-lint
     runs-on: ubuntu-latest
     steps:
@@ -29,7 +32,7 @@ jobs:
           # only-new-issues: true
 
           # Optional: if set to true then the action will use pre-installed Go.
-          # skip-go-installation: true
+          skip-go-installation: true
 
           # Optional: if set to true then the action don't cache or restore ~/go/pkg.
           # skip-pkg-cache: true

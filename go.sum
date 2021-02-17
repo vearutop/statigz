@@ -2,6 +2,8 @@ github.com/andybalholm/brotli v1.0.1 h1:KqhlKozYbRtJvsPrrEeXcO+N2l6NYT5A2QAFmSUL
 github.com/andybalholm/brotli v1.0.1/go.mod h1:loMXtMfwqflxFJPmdbJO0a3KNoPuLBgiu3qAvBg8x/Y=
 github.com/bool64/dev v0.1.19-0.20210217203650-25e73fae7ded h1:8pd90+xYNRyNEFsWZgddW4r8UkLLkuFA5mccarfOBlA=
 github.com/bool64/dev v0.1.19-0.20210217203650-25e73fae7ded/go.mod h1:cTHiTDNc8EewrQPy3p1obNilpMpdmlUesDkFTF2zRWU=
+github.com/bool64/dev v0.1.19-0.20210217204933-e2dca57c9ab0 h1:wSsllqKodpAGwsViAEnRxQ3Xk0jecQkDASt0PP8/HPg=
+github.com/bool64/dev v0.1.19-0.20210217204933-e2dca57c9ab0/go.mod h1:cTHiTDNc8EewrQPy3p1obNilpMpdmlUesDkFTF2zRWU=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
