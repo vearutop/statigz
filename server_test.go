@@ -150,6 +150,22 @@ func TestServer_ServeHTTP_head_gz(t *testing.T) {
 	assert.Len(t, rw.Body.String(), 0)
 }
 
+func BenchmarkServer_ServeHTTP(b *testing.B) {
+	s := statigz.FileServer(v, statigz.EncodeOnInit)
+
+	req, err := http.NewRequest(http.MethodGet, "/_testdata/swagger.json", nil)
+	require.NoError(b, err)
+
+	req.Header.Set("Accept-Encoding", "gzip, br")
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		rw := httptest.NewRecorder()
+		s.ServeHTTP(rw, req)
+	}
+}
+
 func TestServer_ServeHTTP_get_gz(t *testing.T) {
 	s := statigz.FileServer(v, statigz.EncodeOnInit)
 
