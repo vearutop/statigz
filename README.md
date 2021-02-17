@@ -1,7 +1,7 @@
 # statigz
 
-<!--[![Build Status](https://github.com/vearutop/statigz/workflows/test/badge.svg)](https://github.com/vearutop/statigz/actions?query=branch%3Amaster+workflow%3Atest)
-[![Coverage Status](https://codecov.io/gh/vearutop/statigz/branch/master/graph/badge.svg)](https://codecov.io/gh/vearutop/statigz)-->
+[![Build Status](https://github.com/vearutop/statigz/workflows/test-unit/badge.svg)](https://github.com/vearutop/statigz/actions?query=branch%3Amaster+workflow%3Atest-unit)
+[![Coverage Status](https://codecov.io/gh/vearutop/statigz/branch/master/graph/badge.svg)](https://codecov.io/gh/vearutop/statigz)
 [![GoDevDoc](https://img.shields.io/badge/dev-doc-00ADD8?logo=go)](https://pkg.go.dev/github.com/vearutop/statigz)
 [![Time Tracker](https://wakatime.com/badge/github/vearutop/statigz.svg)](https://wakatime.com/badge/github/vearutop/statigz)
 ![Code lines](https://sloc.xyz/github/vearutop/statigz/?category=code)
