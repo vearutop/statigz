@@ -296,6 +296,9 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	fn := strings.TrimPrefix(req.URL.Path, "/")
 	ae := req.Header.Get("Accept-Encoding")
 
+	// Always add Accept-Encoding to Vary to prevent intermediate caches corruption.
+	rw.Header().Add("Vary", "Accept-Encoding")
+
 	if ae != "" {
 		minInfo, minEnc := s.minEnc(strings.ToLower(ae), fn)
 
