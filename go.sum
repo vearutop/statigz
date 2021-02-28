@@ -1,7 +1,7 @@
 github.com/andybalholm/brotli v1.0.1 h1:KqhlKozYbRtJvsPrrEeXcO+N2l6NYT5A2QAFmSULpEc=
 github.com/andybalholm/brotli v1.0.1/go.mod h1:loMXtMfwqflxFJPmdbJO0a3KNoPuLBgiu3qAvBg8x/Y=
-github.com/bool64/dev v0.1.20-0.20210228082726-be97b8ffd29f h1:1c14PJdkorDDZWDQ6Q55yFTDZNm4vbzojjDPL48/3Ww=
-github.com/bool64/dev v0.1.20-0.20210228082726-be97b8ffd29f/go.mod h1:cTHiTDNc8EewrQPy3p1obNilpMpdmlUesDkFTF2zRWU=
+github.com/bool64/dev v0.1.20 h1:PeDScN45cziC5Swn1Xgam4LWDwaa5rsRB28vW9x771U=
+github.com/bool64/dev v0.1.20/go.mod h1:cTHiTDNc8EewrQPy3p1obNilpMpdmlUesDkFTF2zRWU=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
