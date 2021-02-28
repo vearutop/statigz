@@ -181,6 +181,7 @@ func TestServer_ServeHTTP_get_gz(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rw.Code)
 	assert.Equal(t, "gzip", rw.Header().Get("Content-Encoding"))
 	assert.Equal(t, "1bp69hxb9nd93.gz", rw.Header().Get("Etag"))
+	assert.Equal(t, "Accept-Encoding", rw.Header().Get("Vary"))
 	assert.NotEmpty(t, rw.Body.String())
 
 	r, err := gzip.NewReader(rw.Body)
