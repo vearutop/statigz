@@ -7,7 +7,6 @@ import (
 	"hash/fnv"
 	"io"
 	"io/fs"
-	"math"
 	"mime"
 	"net/http"
 	"path"
@@ -262,7 +261,7 @@ func (s *Server) serve(rw http.ResponseWriter, req *http.Request, fn, suf, enc s
 func (s *Server) minEnc(accessEncoding string, fn string) (fileInfo, Encoding) {
 	var (
 		minEnc  Encoding
-		minInfo = fileInfo{size: math.MaxInt64}
+		minInfo = fileInfo{size: -1}
 	)
 
 	for _, enc := range s.Encodings {
@@ -275,7 +274,7 @@ func (s *Server) minEnc(accessEncoding string, fn string) (fileInfo, Encoding) {
 			continue
 		}
 
-		if info.size < minInfo.size {
+		if minInfo.size == -1 || info.size < minInfo.size {
 			minEnc = enc
 			minInfo = info
 		}
