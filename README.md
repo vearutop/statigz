@@ -26,7 +26,7 @@ serving them directly to capable user agents. This library implements such funct
 
 Read more in a [blog post](https://dev.to/vearutop/serving-compressed-static-assets-with-http-in-go-1-16-55bb).
 
-> **_NOTE:_** Guarding new api (`embed`) with build tags is not a viable option, since it imposes 
+> **_NOTE:_** Guarding new api (`embed`) with build tags is not a viable option, since it imposes
 > [issue](https://github.com/golang/go/issues/40067) in older versions of Go.
 
 ## Example
@@ -78,8 +78,8 @@ decompressed are served with [`http.ServeContent`](https://golang.org/pkg/net/ht
 
 ### Brotli support
 
-Support for `brotli` is optional. Using `brotli` adds about 260 KB to binary size, that's why it is moved to
-a separate package.
+Support for `brotli` is optional. Using `brotli` adds about 260 KB to binary size, that's why it is moved to a separate
+package.
 
 > **_NOTE:_** Although [`brotli`](https://github.com/google/brotli) has better compression than `gzip` and already
 > has wide support in browsers, it has limitations for non-https servers,
@@ -88,10 +88,48 @@ a separate package.
 
 ### Runtime encoding
 
-Recommended way of embedding assets is to compress assets before the build, so that binary includes `*.gz` or `*.br` files. 
-This can be inconvenient in some cases, there is `EncodeOnInit` option to compress assets in runtime when creating file server.
-Once compressed, assets will be served directly without additional dynamic compression. 
+Recommended way of embedding assets is to compress assets before the build, so that binary includes `*.gz` or `*.br`
+files. This can be inconvenient in some cases, there is `EncodeOnInit` option to compress assets in runtime when
+creating file server. Once compressed, assets will be served directly without additional dynamic compression.
 
 Files with extensions ".gz", ".br", ".gif", ".jpg", ".png", ".webp" are excluded from runtime encoding by default.
 
 > **_NOTE:_** Compressing assets in runtime can degrade startup performance and increase memory usage to prepare and store compressed data.
+
+### Mounting a subdirectory
+
+It may be convenient to strip leading directory from an embedded file system, you can do that with `fs.Sub` and a type
+assertion.
+
+```go
+package main
+
+import (
+	"embed"
+	"io/fs"
+	"log"
+	"net/http"
+
+	"github.com/vearutop/statigz"
+	"github.com/vearutop/statigz/brotli"
+)
+
+// Declare your embedded assets.
+
+//go:embed static/*
+var st embed.FS
+
+func main() {
+	// Retrieve sub directory.
+	sub, err := fs.Sub(st, "static")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Plug static assets handler to your server or router.
+	err = http.ListenAndServe(":80", statigz.FileServer(sub.(fs.ReadDirFS), brotli.AddEncoding))
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+```

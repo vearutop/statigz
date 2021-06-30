@@ -16,12 +16,12 @@ linters-settings:
     check-exported: false
   unparam:
     check-exported: true
+  cyclop:
+    max-complexity: 12
 
 linters:
   enable-all: true
   disable:
-    - testpackage
-    - goerr113
     - lll
     - maligned
     - gochecknoglobals
@@ -30,9 +30,11 @@ linters:
     - paralleltest
     - forbidigo
     - exhaustivestruct
-    - cyclop
-    - interfacer
+    - interfacer # deprecated
     - forcetypeassert
+    - scopelint # deprecated
+    - ifshort # too many false positives
+    - golint # deprecated
 
 issues:
   exclude-use-default: false
