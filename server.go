@@ -163,6 +163,10 @@ func (s *Server) hashDir(p string) error {
 		fn := path.Join(p, f.Name())
 
 		if f.IsDir() {
+			s.info[path.Clean(fn)] = fileInfo{
+				isDir: true,
+			}
+
 			if err = s.hashDir(fn); err != nil {
 				return err
 			}
@@ -284,6 +288,10 @@ func (s *Server) minEnc(accessEncoding string, fn string) (fileInfo, Encoding) {
 }
 
 // ServeHTTP serves static files.
+//
+// For compatibility with std http.FileServer:
+// if request path ends with /index.html, it is redirected to base directory;
+// if request path points to a directory without trailing "/", it is redirected to a path with trailing "/".
 func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet && req.Method != http.MethodHead {
 		rw.Header().Set("Allow", http.MethodGet+", "+http.MethodHead)
@@ -292,8 +300,24 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if strings.HasSuffix(req.URL.Path, "/index.html") {
+		localRedirect(rw, req, "./")
+
+		return
+	}
+
 	fn := strings.TrimPrefix(req.URL.Path, "/")
 	ae := req.Header.Get("Accept-Encoding")
+
+	if s.info[fn].isDir {
+		localRedirect(rw, req, path.Base(req.URL.Path)+"/")
+
+		return
+	}
+
+	if fn == "" || strings.HasSuffix(fn, "/") {
+		fn += "index.html"
+	}
 
 	// Always add Accept-Encoding to Vary to prevent intermediate caches corruption.
 	rw.Header().Add("Vary", "Accept-Encoding")
@@ -320,7 +344,7 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// Decompress compressed data into response.
 	for _, enc := range s.Encodings {
 		info, found := s.info[fn+enc.FileExt]
-		if !found || enc.Decoder == nil {
+		if !found || enc.Decoder == nil || info.isDir {
 			continue
 		}
 
@@ -355,6 +379,7 @@ type fileInfo struct {
 	hash    string
 	size    int
 	content []byte
+	isDir   bool
 }
 
 // OnError is an option to customize error handling in Server.
@@ -396,4 +421,17 @@ func GzipEncoding() Encoding {
 // of large embeddings, use with caution.
 func EncodeOnInit(server *Server) {
 	server.EncodeOnInit = true
+}
+
+// localRedirect gives a Moved Permanently response.
+// It does not convert relative paths to absolute paths like Redirect does.
+//
+// Copied go1.17/src/net/http/fs.go:685.
+func localRedirect(w http.ResponseWriter, r *http.Request, newPath string) {
+	if q := r.URL.RawQuery; q != "" {
+		newPath += "?" + q
+	}
+
+	w.Header().Set("Location", newPath)
+	w.WriteHeader(http.StatusMovedPermanently)
 }

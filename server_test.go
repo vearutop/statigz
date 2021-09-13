@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"embed"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -19,15 +20,17 @@ import (
 //go:embed _testdata/*
 var v embed.FS
 
-func TestServer_ServeHTTP_found(t *testing.T) {
-	s := statigz.FileServer(v, brotli.AddEncoding, statigz.EncodeOnInit)
+func TestServer_ServeHTTP_std(t *testing.T) {
+	s := http.FileServer(http.FS(v))
 
 	for u, found := range map[string]bool{
 		"/_testdata/favicon.png":         true,
 		"/_testdata/nonexistent":         false,
 		"/_testdata/swagger.json":        true,
-		"/_testdata/deeper/swagger.json": true,
-		"/_testdata/deeper/openapi.json": true,
+		"/_testdata/deeper/swagger.json": false,
+		"/_testdata/deeper/openapi.json": false,
+		"/_testdata/":                    true,
+		"/_testdata/?abc":                true,
 	} {
 		req, err := http.NewRequest(http.MethodGet, u, nil)
 		require.NoError(t, err)
@@ -41,6 +44,62 @@ func TestServer_ServeHTTP_found(t *testing.T) {
 		} else {
 			assert.Equal(t, http.StatusNotFound, rw.Code, u)
 		}
+	}
+
+	for u, l := range map[string]string{
+		"/_testdata/index.html": "./",
+		"/_testdata":            "_testdata/",
+		"/_testdata?abc":        "_testdata/?abc",
+	} {
+		req, err := http.NewRequest(http.MethodGet, u, nil)
+		require.NoError(t, err)
+
+		rw := httptest.NewRecorder()
+		s.ServeHTTP(rw, req)
+
+		assert.Equal(t, http.StatusMovedPermanently, rw.Code, u)
+		assert.Equal(t, l, rw.Header().Get("Location"))
+	}
+}
+
+func TestServer_ServeHTTP_found(t *testing.T) {
+	s := statigz.FileServer(v, brotli.AddEncoding, statigz.EncodeOnInit)
+
+	for u, found := range map[string]bool{
+		"/_testdata/favicon.png":         true,
+		"/_testdata/nonexistent":         false,
+		"/_testdata/swagger.json":        true,
+		"/_testdata/deeper/swagger.json": true,
+		"/_testdata/deeper/openapi.json": true,
+		"/_testdata/":                    true,
+	} {
+		req, err := http.NewRequest(http.MethodGet, u, nil)
+		require.NoError(t, err)
+
+		rw := httptest.NewRecorder()
+		s.ServeHTTP(rw, req)
+
+		if found {
+			assert.Equal(t, "", rw.Header().Get("Content-Encoding"))
+			assert.Equal(t, http.StatusOK, rw.Code, u)
+		} else {
+			assert.Equal(t, http.StatusNotFound, rw.Code, u)
+		}
+	}
+
+	for u, l := range map[string]string{
+		"/_testdata/index.html": "./",
+		"/_testdata":            "_testdata/",
+		"/_testdata?abc":        "_testdata/?abc",
+	} {
+		req, err := http.NewRequest(http.MethodGet, u, nil)
+		require.NoError(t, err)
+
+		rw := httptest.NewRecorder()
+		s.ServeHTTP(rw, req)
+
+		assert.Equal(t, http.StatusMovedPermanently, rw.Code, u)
+		assert.Equal(t, l, rw.Header().Get("Location"))
 	}
 }
 
@@ -221,4 +280,73 @@ func TestServer_ServeHTTP_get_br(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, raw, decoded)
+}
+
+func TestServer_ServeHTTP_indexCompressed(t *testing.T) {
+	s := statigz.FileServer(v)
+
+	req, err := http.NewRequest(http.MethodGet, "/_testdata/", nil)
+	require.NoError(t, err)
+
+	req.Header.Set("Accept-Encoding", "gzip, br")
+
+	rw := httptest.NewRecorder()
+	s.ServeHTTP(rw, req)
+
+	assert.Equal(t, http.StatusOK, rw.Code)
+	assert.Equal(t, "gzip", rw.Header().Get("Content-Encoding"))
+	assert.Equal(t, "45pls0g4wm91", rw.Header().Get("Etag"))
+	assert.NotEmpty(t, rw.Body.String())
+
+	r, err := gzip.NewReader(rw.Body)
+	assert.NoError(t, err)
+
+	decoded, err := io.ReadAll(r)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "Hello!", string(decoded))
+}
+
+func TestServer_ServeHTTP_sub(t *testing.T) {
+	vs, err := fs.Sub(v, "_testdata")
+	require.NoError(t, err)
+
+	s := statigz.FileServer(vs.(fs.ReadDirFS), brotli.AddEncoding, statigz.EncodeOnInit)
+
+	for u, found := range map[string]bool{
+		"/favicon.png":         true,
+		"/nonexistent":         false,
+		"/swagger.json":        true,
+		"/deeper/swagger.json": true,
+		"/deeper/openapi.json": true,
+		"/":                    true,
+	} {
+		req, err := http.NewRequest(http.MethodGet, u, nil)
+		require.NoError(t, err)
+
+		rw := httptest.NewRecorder()
+		s.ServeHTTP(rw, req)
+
+		if found {
+			assert.Equal(t, "", rw.Header().Get("Content-Encoding"))
+			assert.Equal(t, http.StatusOK, rw.Code, u)
+		} else {
+			assert.Equal(t, http.StatusNotFound, rw.Code, u)
+		}
+	}
+
+	for u, l := range map[string]string{
+		"/index.html": "./",
+		"/deeper":     "deeper/",
+		"/deeper?abc": "deeper/?abc",
+	} {
+		req, err := http.NewRequest(http.MethodGet, u, nil)
+		require.NoError(t, err)
+
+		rw := httptest.NewRecorder()
+		s.ServeHTTP(rw, req)
+
+		assert.Equal(t, http.StatusMovedPermanently, rw.Code, u)
+		assert.Equal(t, l, rw.Header().Get("Location"))
+	}
 }
