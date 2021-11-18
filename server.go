@@ -217,7 +217,7 @@ func (s *Server) serve(rw http.ResponseWriter, req *http.Request, fn, suf, enc s
 	}
 	
 	// This is used to enforce application/javascript MIME on Windows (https://github.com/golang/go/issues/32350)
-	if strings.HasSuffix(r.URL.Path, ".js") {
+	if strings.HasSuffix(req.URL.Path, ".js") {
 		ctype = "application/javascript"
 	}
 
