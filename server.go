@@ -215,7 +215,7 @@ func (s *Server) serve(rw http.ResponseWriter, req *http.Request, fn, suf, enc s
 	if ctype == "" {
 		ctype = "application/octet-stream" // Prevent unreliable Content-Type detection on compressed data.
 	}
-	
+
 	// This is used to enforce application/javascript MIME on Windows (https://github.com/golang/go/issues/32350)
 	if strings.HasSuffix(req.URL.Path, ".js") {
 		ctype = "application/javascript"
