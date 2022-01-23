@@ -62,7 +62,10 @@ var SkipCompressionExt = []string{".gz", ".br", ".gif", ".jpg", ".png", ".webp"}
 
 // FileServer creates an instance of Server from file system.
 //
-// Typically file system would be an embed.FS.
+// This function indexes provided file system to optimize further serving,
+// so it is not recommended running it in the loop (for example for each request).
+//
+// Typically, file system would be an embed.FS.
 //
 //   //go:embed *.png *.br
 //	 var FS embed.FS
