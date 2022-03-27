@@ -50,8 +50,8 @@ type Server struct {
 }
 
 const (
-	// minSizeToEncode is minimal file size to apply encoding in runtime, 1KiB.
-	minSizeToEncode = 1024
+	// minSizeToEncode is minimal file size to apply encoding in runtime, 0.5KiB.
+	minSizeToEncode = 512
 
 	// minCompressionRatio is a minimal compression ratio to serve encoded data, 97%.
 	minCompressionRatio = 0.97
@@ -207,7 +207,8 @@ func (s *Server) reader(fn string, info fileInfo) (io.Reader, error) {
 }
 
 func (s *Server) serve(rw http.ResponseWriter, req *http.Request, fn, suf, enc string, info fileInfo,
-	decompress func(r io.Reader) (io.Reader, error)) {
+	decompress func(r io.Reader) (io.Reader, error),
+) {
 	if m := req.Header.Get("If-None-Match"); m == info.hash {
 		rw.WriteHeader(http.StatusNotModified)
 
