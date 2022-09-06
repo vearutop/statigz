@@ -26,9 +26,6 @@ serving them directly to capable user agents. This library implements such funct
 
 Read more in a [blog post](https://dev.to/vearutop/serving-compressed-static-assets-with-http-in-go-1-16-55bb).
 
-> **_NOTE:_** Guarding new api (`embed`) with build tags is not a viable option, since it imposes
-> [issue](https://github.com/golang/go/issues/40067) in older versions of Go.
-
 ## Example
 
 ```go
