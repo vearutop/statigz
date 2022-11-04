@@ -5,9 +5,10 @@ import (
 	"embed"
 	"io"
 	"io/fs"
-	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	brotli2 "github.com/andybalholm/brotli"
@@ -249,7 +250,7 @@ func TestServer_ServeHTTP_get_gz(t *testing.T) {
 	decoded, err := io.ReadAll(r)
 	assert.NoError(t, err)
 
-	raw, err := ioutil.ReadFile("_testdata/swagger.json")
+	raw, err := os.ReadFile("_testdata/swagger.json")
 	assert.NoError(t, err)
 
 	assert.Equal(t, raw, decoded)
@@ -276,7 +277,7 @@ func TestServer_ServeHTTP_get_br(t *testing.T) {
 	decoded, err := io.ReadAll(r)
 	assert.NoError(t, err)
 
-	raw, err := ioutil.ReadFile("_testdata/swagger.json")
+	raw, err := os.ReadFile("_testdata/swagger.json")
 	assert.NoError(t, err)
 
 	assert.Equal(t, raw, decoded)
@@ -328,9 +329,11 @@ func TestServer_ServeHTTP_sub(t *testing.T) {
 		s.ServeHTTP(rw, req)
 
 		if found {
+			assert.True(t, s.Found(req))
 			assert.Equal(t, "", rw.Header().Get("Content-Encoding"))
 			assert.Equal(t, http.StatusOK, rw.Code, u)
 		} else {
+			assert.False(t, s.Found(req))
 			assert.Equal(t, http.StatusNotFound, rw.Code, u)
 		}
 	}
@@ -348,5 +351,27 @@ func TestServer_ServeHTTP_sub(t *testing.T) {
 
 		assert.Equal(t, http.StatusMovedPermanently, rw.Code, u)
 		assert.Equal(t, l, rw.Header().Get("Location"))
+	}
+}
+
+func ExampleServer_Found() {
+	fileServer := statigz.FileServer(st)
+	customHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Serve existing static resource.
+		if fileServer.Found(r) {
+			fileServer.ServeHTTP(w, r)
+
+			return
+		}
+
+		// Do something custom for non-existing resource, for example serve index page.
+		// (This is an example, serving index instead of 404 might not be the best idea in real life 😅).
+		r.URL.Path = "/"
+		fileServer.ServeHTTP(w, r)
+	})
+
+	// Plug static assets handler to your server or router.
+	if err := http.ListenAndServe("localhost:80", customHandler); err != nil {
+		log.Fatal(err)
 	}
 }

@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/andybalholm/brotli v1.0.4
-	github.com/bool64/dev v0.2.9
+	github.com/bool64/dev v0.2.22
 	github.com/stretchr/testify v1.4.0
 )
 

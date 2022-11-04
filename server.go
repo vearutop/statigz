@@ -67,8 +67,8 @@ var SkipCompressionExt = []string{".gz", ".br", ".gif", ".jpg", ".png", ".webp"}
 //
 // Typically, file system would be an embed.FS.
 //
-//   //go:embed *.png *.br
-//	 var FS embed.FS
+//	//go:embed *.png *.br
+//	var FS embed.FS
 //
 // Brotli support is optionally available with brotli.AddEncoding.
 func FileServer(fs fs.ReadDirFS, options ...func(server *Server)) *Server {
@@ -367,6 +367,49 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	http.NotFound(rw, req)
 }
 
+// Found returns true if http.Request would be fulfilled by Server.
+//
+// This can be useful for custom handling of requests to non-existent resources.
+func (s *Server) Found(req *http.Request) bool {
+	fn := strings.TrimPrefix(req.URL.Path, "/")
+	ae := req.Header.Get("Accept-Encoding")
+
+	if s.info[fn].isDir {
+		return true
+	}
+
+	if fn == "" || strings.HasSuffix(fn, "/") {
+		fn += "index.html"
+	}
+
+	if ae != "" {
+		minInfo, _ := s.minEnc(strings.ToLower(ae), fn)
+
+		if minInfo.hash != "" {
+			// Copy compressed data into response.
+			return true
+		}
+	}
+
+	// Copy uncompressed data into response.
+	_, uncompressedFound := s.info[fn]
+	if uncompressedFound {
+		return true
+	}
+
+	// Decompress compressed data into response.
+	for _, enc := range s.Encodings {
+		info, found := s.info[fn+enc.FileExt]
+		if !found || enc.Decoder == nil || info.isDir {
+			continue
+		}
+
+		return true
+	}
+
+	return false
+}
+
 // Encoding describes content encoding.
 type Encoding struct {
 	// FileExt is an extension of file with compressed content, for example ".gz".
@@ -435,7 +478,7 @@ func EncodeOnInit(server *Server) {
 // localRedirect gives a Moved Permanently response.
 // It does not convert relative paths to absolute paths like Redirect does.
 //
-// Copied go1.17/src/net/http/fs.go:685.
+// Copied from go1.17/src/net/http/fs.go:685.
 func localRedirect(w http.ResponseWriter, r *http.Request, newPath string) {
 	if q := r.URL.RawQuery; q != "" {
 		newPath += "?" + q
