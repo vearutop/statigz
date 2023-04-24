@@ -131,29 +131,29 @@ func main() {
 }
 ```
 
-### Custom handling of Not Found
+### Custom error handling
 
-If you need special treatment for resources that are not available in static server, you can use `Found`
-to check them before serving.
+Error states can be handled with the `staticgz.OnError` and `staticgz.OnNotFound` options. These allow you to customize
+the response sent to the client when an error occurs or when no resource is found.
 
 ```go
-fileServer := statigz.FileServer(st)
-customHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-    // Serve existing static resource.
-    if fileServer.Found(r) {
-        fileServer.ServeHTTP(w, r)
+fileServer := statigz.FileServer(
+	st,
+	staticgz.OnError(func(w http.ResponseWriter, r *http.Request, err error) {
+		// Handle error.
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}),
+	staticgz.OnNotFound(func(w http.ResponseWriter, r *http.Request) {
+		// Handle not found.
+		http.Error(w, "Not found", http.StatusNotFound)
+		
+		// Or to serve a alternative path instead you could;
+        //r.URL.Path = "/alternative/path"
+        //fileServer.ServeHTTP(w, r)
+	}),
+)
 
-        return
-    }
-
-    // Do something custom for non-existing resource, for example serve index page.
-    // (This is an example, serving index instead of 404 might not be the best idea in real life 😅).
-    r.URL.Path = "/"
-    fileServer.ServeHTTP(w, r)
-})
-
-// Plug static assets handler to your server or router.
-if err := http.ListenAndServe("localhost:80", customHandler); err != nil {
+if err := http.ListenAndServe("localhost:80", fileServer); err != nil {
     log.Fatal(err)
 }
 ```

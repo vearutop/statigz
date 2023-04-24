@@ -35,6 +35,9 @@ type Server struct {
 	// OnError controls error handling during Serve.
 	OnError func(rw http.ResponseWriter, r *http.Request, err error)
 
+	// OnNotFound controls handling of not found files.
+	OnNotFound func(rw http.ResponseWriter, r *http.Request)
+
 	// Encodings contains supported encodings, default GzipEncoding.
 	Encodings []Encoding
 
@@ -78,7 +81,8 @@ func FileServer(fs fs.ReadDirFS, options ...func(server *Server)) *Server {
 		OnError: func(rw http.ResponseWriter, r *http.Request, err error) {
 			http.Error(rw, "Internal Server Error", http.StatusInternalServerError)
 		},
-		Encodings: []Encoding{GzipEncoding()},
+		OnNotFound: http.NotFound,
+		Encodings:  []Encoding{GzipEncoding()},
 	}
 
 	for _, o := range options {
@@ -364,7 +368,7 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	http.NotFound(rw, req)
+	s.OnNotFound(rw, req)
 }
 
 // Found returns true if http.Request would be fulfilled by Server.
@@ -438,6 +442,13 @@ type fileInfo struct {
 func OnError(onErr func(rw http.ResponseWriter, r *http.Request, err error)) func(server *Server) {
 	return func(server *Server) {
 		server.OnError = onErr
+	}
+}
+
+// OnNotFound is an option to customize not found (404) handling in Server.
+func OnNotFound(onErr func(rw http.ResponseWriter, r *http.Request)) func(server *Server) {
+	return func(server *Server) {
+		server.OnNotFound = onErr
 	}
 }
 
