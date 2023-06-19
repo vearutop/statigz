@@ -12,11 +12,11 @@ import (
 
 // Declare your embedded assets.
 
-//go:embed _testdata/*
+//go:embed testdata/*
 var st embed.FS
 
 func ExampleFileServer() {
-	s, err := fs.Sub(st, "_testdata")
+	s, err := fs.Sub(st, "testdata")
 	if err != nil {
 		log.Fatal(err)
 	}
