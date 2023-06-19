@@ -18,20 +18,20 @@ import (
 	"github.com/vearutop/statigz/brotli"
 )
 
-//go:embed _testdata/*
+//go:embed testdata/*
 var v embed.FS
 
 func TestServer_ServeHTTP_std(t *testing.T) {
 	s := http.FileServer(http.FS(v))
 
 	for u, found := range map[string]bool{
-		"/_testdata/favicon.png":         true,
-		"/_testdata/nonexistent":         false,
-		"/_testdata/swagger.json":        true,
-		"/_testdata/deeper/swagger.json": false,
-		"/_testdata/deeper/openapi.json": false,
-		"/_testdata/":                    true,
-		"/_testdata/?abc":                true,
+		"/testdata/favicon.png":         true,
+		"/testdata/nonexistent":         false,
+		"/testdata/swagger.json":        true,
+		"/testdata/deeper/swagger.json": false,
+		"/testdata/deeper/openapi.json": false,
+		"/testdata/":                    true,
+		"/testdata/?abc":                true,
 	} {
 		req, err := http.NewRequest(http.MethodGet, u, nil)
 		require.NoError(t, err)
@@ -48,9 +48,9 @@ func TestServer_ServeHTTP_std(t *testing.T) {
 	}
 
 	for u, l := range map[string]string{
-		"/_testdata/index.html": "./",
-		"/_testdata":            "_testdata/",
-		"/_testdata?abc":        "_testdata/?abc",
+		"/testdata/index.html": "./",
+		"/testdata":            "testdata/",
+		"/testdata?abc":        "testdata/?abc",
 	} {
 		req, err := http.NewRequest(http.MethodGet, u, nil)
 		require.NoError(t, err)
@@ -67,12 +67,12 @@ func TestServer_ServeHTTP_found(t *testing.T) {
 	s := statigz.FileServer(v, brotli.AddEncoding, statigz.EncodeOnInit)
 
 	for u, found := range map[string]bool{
-		"/_testdata/favicon.png":         true,
-		"/_testdata/nonexistent":         false,
-		"/_testdata/swagger.json":        true,
-		"/_testdata/deeper/swagger.json": true,
-		"/_testdata/deeper/openapi.json": true,
-		"/_testdata/":                    true,
+		"/testdata/favicon.png":         true,
+		"/testdata/nonexistent":         false,
+		"/testdata/swagger.json":        true,
+		"/testdata/deeper/swagger.json": true,
+		"/testdata/deeper/openapi.json": true,
+		"/testdata/":                    true,
 	} {
 		req, err := http.NewRequest(http.MethodGet, u, nil)
 		require.NoError(t, err)
@@ -89,9 +89,9 @@ func TestServer_ServeHTTP_found(t *testing.T) {
 	}
 
 	for u, l := range map[string]string{
-		"/_testdata/index.html": "./",
-		"/_testdata":            "_testdata/",
-		"/_testdata?abc":        "_testdata/?abc",
+		"/testdata/index.html": "./",
+		"/testdata":            "testdata/",
+		"/testdata?abc":        "testdata/?abc",
 	} {
 		req, err := http.NewRequest(http.MethodGet, u, nil)
 		require.NoError(t, err)
@@ -120,7 +120,7 @@ func TestServer_ServeHTTP_error(t *testing.T) {
 func TestServer_ServeHTTP_acceptEncoding(t *testing.T) {
 	s := statigz.FileServer(v, brotli.AddEncoding, statigz.EncodeOnInit)
 
-	req, err := http.NewRequest(http.MethodGet, "/_testdata/deeper/swagger.json", nil)
+	req, err := http.NewRequest(http.MethodGet, "/testdata/deeper/swagger.json", nil)
 	require.NoError(t, err)
 
 	req.Header.Set("Accept-Encoding", "gzip, br")
@@ -164,7 +164,7 @@ func TestServer_ServeHTTP_badFile(t *testing.T) {
 			assert.NoError(t, err)
 		}))
 
-	req, err := http.NewRequest(http.MethodGet, "/_testdata/bad.png", nil)
+	req, err := http.NewRequest(http.MethodGet, "/testdata/bad.png", nil)
 	require.NoError(t, err)
 
 	rw := httptest.NewRecorder()
@@ -179,7 +179,7 @@ func TestServer_ServeHTTP_badFile(t *testing.T) {
 func TestServer_ServeHTTP_head(t *testing.T) {
 	s := statigz.FileServer(v, brotli.AddEncoding, statigz.EncodeOnInit)
 
-	req, err := http.NewRequest(http.MethodHead, "/_testdata/swagger.json", nil)
+	req, err := http.NewRequest(http.MethodHead, "/testdata/swagger.json", nil)
 	require.NoError(t, err)
 
 	req.Header.Set("Accept-Encoding", "gzip, br")
@@ -196,7 +196,7 @@ func TestServer_ServeHTTP_head(t *testing.T) {
 func TestServer_ServeHTTP_head_gz(t *testing.T) {
 	s := statigz.FileServer(v, statigz.EncodeOnInit)
 
-	req, err := http.NewRequest(http.MethodHead, "/_testdata/swagger.json", nil)
+	req, err := http.NewRequest(http.MethodHead, "/testdata/swagger.json", nil)
 	require.NoError(t, err)
 
 	req.Header.Set("Accept-Encoding", "gzip, br")
@@ -213,7 +213,7 @@ func TestServer_ServeHTTP_head_gz(t *testing.T) {
 func BenchmarkServer_ServeHTTP(b *testing.B) {
 	s := statigz.FileServer(v, statigz.EncodeOnInit)
 
-	req, err := http.NewRequest(http.MethodGet, "/_testdata/swagger.json", nil)
+	req, err := http.NewRequest(http.MethodGet, "/testdata/swagger.json", nil)
 	require.NoError(b, err)
 
 	req.Header.Set("Accept-Encoding", "gzip, br")
@@ -230,7 +230,7 @@ func BenchmarkServer_ServeHTTP(b *testing.B) {
 func TestServer_ServeHTTP_get_gz(t *testing.T) {
 	s := statigz.FileServer(v, statigz.EncodeOnInit)
 
-	req, err := http.NewRequest(http.MethodGet, "/_testdata/swagger.json", nil)
+	req, err := http.NewRequest(http.MethodGet, "/testdata/swagger.json", nil)
 	require.NoError(t, err)
 
 	req.Header.Set("Accept-Encoding", "gzip, br")
@@ -250,7 +250,7 @@ func TestServer_ServeHTTP_get_gz(t *testing.T) {
 	decoded, err := io.ReadAll(r)
 	assert.NoError(t, err)
 
-	raw, err := os.ReadFile("_testdata/swagger.json")
+	raw, err := os.ReadFile("testdata/swagger.json")
 	assert.NoError(t, err)
 
 	assert.Equal(t, raw, decoded)
@@ -259,7 +259,7 @@ func TestServer_ServeHTTP_get_gz(t *testing.T) {
 func TestServer_ServeHTTP_get_br(t *testing.T) {
 	s := statigz.FileServer(v, statigz.EncodeOnInit, brotli.AddEncoding)
 
-	req, err := http.NewRequest(http.MethodGet, "/_testdata/swagger.json", nil)
+	req, err := http.NewRequest(http.MethodGet, "/testdata/swagger.json", nil)
 	require.NoError(t, err)
 
 	req.Header.Set("Accept-Encoding", "gzip, br")
@@ -277,7 +277,7 @@ func TestServer_ServeHTTP_get_br(t *testing.T) {
 	decoded, err := io.ReadAll(r)
 	assert.NoError(t, err)
 
-	raw, err := os.ReadFile("_testdata/swagger.json")
+	raw, err := os.ReadFile("testdata/swagger.json")
 	assert.NoError(t, err)
 
 	assert.Equal(t, raw, decoded)
@@ -286,7 +286,7 @@ func TestServer_ServeHTTP_get_br(t *testing.T) {
 func TestServer_ServeHTTP_indexCompressed(t *testing.T) {
 	s := statigz.FileServer(v)
 
-	req, err := http.NewRequest(http.MethodGet, "/_testdata/", nil)
+	req, err := http.NewRequest(http.MethodGet, "/testdata/", nil)
 	require.NoError(t, err)
 
 	req.Header.Set("Accept-Encoding", "gzip, br")
@@ -309,7 +309,7 @@ func TestServer_ServeHTTP_indexCompressed(t *testing.T) {
 }
 
 func TestServer_ServeHTTP_sub(t *testing.T) {
-	vs, err := fs.Sub(v, "_testdata")
+	vs, err := fs.Sub(v, "testdata")
 	require.NoError(t, err)
 
 	s := statigz.FileServer(vs.(fs.ReadDirFS), brotli.AddEncoding, statigz.EncodeOnInit)
