@@ -3,8 +3,8 @@ module github.com/vearutop/statigz
 go 1.17
 
 require (
-	github.com/andybalholm/brotli v1.0.4
-	github.com/bool64/dev v0.2.22
+	github.com/andybalholm/brotli v1.0.5
+	github.com/bool64/dev v0.2.28
 	github.com/stretchr/testify v1.4.0
 )
 
