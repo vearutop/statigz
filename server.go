@@ -48,8 +48,16 @@ type Server struct {
 	// of large embeddings, use with caution.
 	EncodeOnInit bool
 
-	info map[string]fileInfo
-	fs   fs.ReadDirFS
+	// FSPrefix is a path prefix shat should be ignored.
+	// It is prepended to the incoming HTTP path.
+	// This can help to keep static assets in a subdirectory, e.g.
+	//   //go:embed static/*
+	// But access files from HTTP without "/static/" prefix in the path.
+	FSPrefix string
+
+	info     map[string]fileInfo
+	fs       fs.ReadDirFS
+	fsPrefix string
 }
 
 const (
@@ -87,6 +95,10 @@ func FileServer(fs fs.ReadDirFS, options ...func(server *Server)) *Server {
 
 	for _, o := range options {
 		o(&s)
+	}
+
+	if s.FSPrefix != "" {
+		s.fsPrefix = strings.Trim(s.FSPrefix, "/") + "/"
 	}
 
 	// Reading from "." is not expected to fail.
@@ -319,7 +331,7 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fn := strings.TrimPrefix(req.URL.Path, "/")
+	fn := s.fsPrefix + strings.TrimPrefix(req.URL.Path, "/")
 	ae := req.Header.Get("Accept-Encoding")
 
 	if s.info[fn].isDir {
@@ -375,7 +387,7 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 //
 // This can be useful for custom handling of requests to non-existent resources.
 func (s *Server) Found(req *http.Request) bool {
-	fn := strings.TrimPrefix(req.URL.Path, "/")
+	fn := s.fsPrefix + strings.TrimPrefix(req.URL.Path, "/")
 	ae := req.Header.Get("Accept-Encoding")
 
 	if s.info[fn].isDir {
@@ -484,6 +496,13 @@ func GzipEncoding() Encoding {
 // of large embeddings, use with caution.
 func EncodeOnInit(server *Server) {
 	server.EncodeOnInit = true
+}
+
+// FSPrefix declares file system path prefix that should be ignored.
+func FSPrefix(prefix string) func(server *Server) {
+	return func(server *Server) {
+		server.FSPrefix = prefix
+	}
 }
 
 // localRedirect gives a Moved Permanently response.
