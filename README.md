@@ -95,15 +95,13 @@ Files with extensions ".gz", ".br", ".gif", ".jpg", ".png", ".webp" are excluded
 
 ### Mounting a subdirectory
 
-It may be convenient to strip leading directory from an embedded file system, you can do that with `fs.Sub` and a type
-assertion.
+It may be convenient to strip leading directory from an embedded file system, you can do that with `statigz.FSPrefix`.
 
 ```go
 package main
 
 import (
 	"embed"
-	"io/fs"
 	"log"
 	"net/http"
 
@@ -117,14 +115,8 @@ import (
 var st embed.FS
 
 func main() {
-	// Retrieve sub directory.
-	sub, err := fs.Sub(st, "static")
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	// Plug static assets handler to your server or router.
-	err = http.ListenAndServe(":80", statigz.FileServer(sub.(fs.ReadDirFS), brotli.AddEncoding))
+	err := http.ListenAndServe(":80", statigz.FileServer(st, brotli.AddEncoding, statigz.FSPrefix("static")))
 	if err != nil {
 		log.Fatal(err)
 	}

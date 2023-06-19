@@ -86,6 +86,8 @@ func TestServer_ServeHTTP_found(t *testing.T) {
 		} else {
 			assert.Equal(t, http.StatusNotFound, rw.Code, u)
 		}
+
+		assert.Equal(t, found, s.Found(req))
 	}
 
 	for u, l := range map[string]string{
@@ -373,5 +375,33 @@ func ExampleServer_Found() {
 	// Plug static assets handler to your server or router.
 	if err := http.ListenAndServe("localhost:80", customHandler); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func TestServer_ServeHTTP_FSPrefix(t *testing.T) {
+	s := statigz.FileServer(v, brotli.AddEncoding, statigz.EncodeOnInit, statigz.FSPrefix("testdata"))
+
+	for u, found := range map[string]bool{
+		"/favicon.png":         true,
+		"/nonexistent":         false,
+		"/swagger.json":        true,
+		"/deeper/swagger.json": true,
+		"/deeper/openapi.json": true,
+		"/":                    true,
+	} {
+		req, err := http.NewRequest(http.MethodGet, u, nil)
+		require.NoError(t, err)
+
+		rw := httptest.NewRecorder()
+		s.ServeHTTP(rw, req)
+
+		if found {
+			assert.Equal(t, "", rw.Header().Get("Content-Encoding"))
+			assert.Equal(t, http.StatusOK, rw.Code, u)
+		} else {
+			assert.Equal(t, http.StatusNotFound, rw.Code, u)
+		}
+
+		assert.Equal(t, found, s.Found(req))
 	}
 }
