@@ -89,7 +89,7 @@ Recommended way of embedding assets is to compress assets before the build, so t
 files. This can be inconvenient in some cases, there is `EncodeOnInit` option to compress assets in runtime when
 creating file server. Once compressed, assets will be served directly without additional dynamic compression.
 
-Files with extensions ".gz", ".br", ".gif", ".jpg", ".png", ".webp" are excluded from runtime encoding by default.
+Files with extensions ".gz", ".br", ".zst", ".gif", ".jpg", ".png", ".webp" are excluded from runtime encoding by default.
 
 > **_NOTE:_** Compressing assets in runtime can degrade startup performance and increase memory usage to prepare and store compressed data.
 
@@ -106,6 +106,7 @@ import (
 	"net/http"
 
 	"github.com/vearutop/statigz"
+	"github.com/vearutop/statigz/zstd"
 	"github.com/vearutop/statigz/brotli"
 )
 
@@ -116,7 +117,7 @@ var st embed.FS
 
 func main() {
 	// Plug static assets handler to your server or router.
-	err := http.ListenAndServe(":80", statigz.FileServer(st, brotli.AddEncoding, statigz.FSPrefix("static")))
+	err := http.ListenAndServe(":80", statigz.FileServer(st, brotli.AddEncoding, zstd.AddEncoding, statigz.FSPrefix("static")))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -125,17 +126,17 @@ func main() {
 
 ### Custom error handling
 
-Error states can be handled with the `staticgz.OnError` and `staticgz.OnNotFound` options. These allow you to customize
+Error states can be handled with the `statigz.OnError` and `statigz.OnNotFound` options. These allow you to customize
 the response sent to the client when an error occurs or when no resource is found.
 
 ```go
 fileServer := statigz.FileServer(
 	st,
-	staticgz.OnError(func(w http.ResponseWriter, r *http.Request, err error) {
+	statigz.OnError(func(w http.ResponseWriter, r *http.Request, err error) {
 		// Handle error.
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}),
-	staticgz.OnNotFound(func(w http.ResponseWriter, r *http.Request) {
+	statigz.OnNotFound(func(w http.ResponseWriter, r *http.Request) {
 		// Handle not found.
 		http.Error(w, "Not found", http.StatusNotFound)
 		
