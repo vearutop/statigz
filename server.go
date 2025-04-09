@@ -69,7 +69,7 @@ const (
 )
 
 // SkipCompressionExt lists file extensions of data that is already compressed.
-var SkipCompressionExt = []string{".gz", ".br", ".gif", ".jpg", ".png", ".webp"}
+var SkipCompressionExt = []string{".gz", ".br", ".zst", ".gif", ".jpg", ".png", ".webp"}
 
 // FileServer creates an instance of Server from file system.
 //
@@ -123,50 +123,54 @@ func (s *Server) encodeFiles() error {
 		}
 
 		for fn, i := range s.info {
-			isEncoded := false
-
-			for _, ext := range SkipCompressionExt {
-				if strings.HasSuffix(fn, ext) {
-					isEncoded = true
-
-					break
-				}
-			}
-
-			if isEncoded {
+			if i.isDir {
 				continue
 			}
 
-			if _, found := s.info[fn+enc.FileExt]; found {
-				continue
-			}
-
-			// Skip encoding of small data.
-			if i.size < minSizeToEncode {
-				continue
-			}
-
-			f, err := s.fs.Open(fn)
-			if err != nil {
+			if err := s.encodeFile(fn, i, enc); err != nil {
 				return err
-			}
-
-			b, err := enc.Encoder(f)
-			if err != nil {
-				return err
-			}
-
-			// Skip encoding for non-compressible data.
-			if float64(len(b))/float64(i.size) > minCompressionRatio {
-				continue
-			}
-
-			s.info[fn+enc.FileExt] = fileInfo{
-				hash:    i.hash + enc.FileExt,
-				size:    len(b),
-				content: b[0:len(b):len(b)],
 			}
 		}
+	}
+
+	return nil
+}
+
+func (s *Server) encodeFile(fn string, i fileInfo, enc Encoding) error {
+	for _, ext := range SkipCompressionExt {
+		if strings.HasSuffix(fn, ext) {
+			return nil
+		}
+	}
+
+	if _, found := s.info[fn+enc.FileExt]; found {
+		return nil
+	}
+
+	// Skip encoding of small data.
+	if i.size < minSizeToEncode {
+		return nil
+	}
+
+	f, err := s.fs.Open(fn)
+	if err != nil {
+		return err
+	}
+
+	b, err := enc.Encoder(f)
+	if err != nil {
+		return err
+	}
+
+	// Skip encoding for non-compressible data.
+	if float64(len(b))/float64(i.size) > minCompressionRatio {
+		return nil
+	}
+
+	s.info[fn+enc.FileExt] = fileInfo{
+		hash:    i.hash + enc.FileExt,
+		size:    len(b),
+		content: b[0:len(b):len(b)],
 	}
 
 	return nil

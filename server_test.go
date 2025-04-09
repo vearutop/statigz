@@ -12,10 +12,12 @@ import (
 	"testing"
 
 	brotli2 "github.com/andybalholm/brotli"
+	zstd2 "github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vearutop/statigz"
 	"github.com/vearutop/statigz/brotli"
+	"github.com/vearutop/statigz/zstd"
 )
 
 //go:embed testdata/*
@@ -275,6 +277,62 @@ func TestServer_ServeHTTP_get_br(t *testing.T) {
 	assert.NotEmpty(t, rw.Body.String())
 
 	r := brotli2.NewReader(rw.Body)
+
+	decoded, err := io.ReadAll(r)
+	assert.NoError(t, err)
+
+	raw, err := os.ReadFile("testdata/swagger.json")
+	assert.NoError(t, err)
+
+	assert.Equal(t, raw, decoded)
+}
+
+func TestServer_ServeHTTP_get_zst_init(t *testing.T) {
+	s := statigz.FileServer(v, statigz.EncodeOnInit, brotli.AddEncoding, zstd.AddEncoding)
+
+	req, err := http.NewRequest(http.MethodGet, "/testdata/swagger.json", nil)
+	require.NoError(t, err)
+
+	req.Header.Set("Accept-Encoding", "zstd")
+
+	rw := httptest.NewRecorder()
+	s.ServeHTTP(rw, req)
+
+	assert.Equal(t, http.StatusOK, rw.Code)
+	assert.Equal(t, "zstd", rw.Header().Get("Content-Encoding"))
+	assert.Equal(t, "1bp69hxb9nd93.zst", rw.Header().Get("Etag"))
+	assert.NotEmpty(t, rw.Body.String())
+
+	r, err := zstd2.NewReader(rw.Body)
+	require.NoError(t, err)
+
+	decoded, err := io.ReadAll(r)
+	assert.NoError(t, err)
+
+	raw, err := os.ReadFile("testdata/swagger.json")
+	assert.NoError(t, err)
+
+	assert.Equal(t, raw, decoded)
+}
+
+func TestServer_ServeHTTP_get_zst(t *testing.T) {
+	s := statigz.FileServer(v, statigz.EncodeOnInit, brotli.AddEncoding, zstd.AddEncoding)
+
+	req, err := http.NewRequest(http.MethodGet, "/testdata/deeper/swagger.json", nil)
+	require.NoError(t, err)
+
+	req.Header.Set("Accept-Encoding", "zstd")
+
+	rw := httptest.NewRecorder()
+	s.ServeHTTP(rw, req)
+
+	assert.Equal(t, http.StatusOK, rw.Code)
+	assert.Equal(t, "zstd", rw.Header().Get("Content-Encoding"))
+	assert.Equal(t, "1061t8bc8jx4s", rw.Header().Get("Etag"))
+	assert.NotEmpty(t, rw.Body.String())
+
+	r, err := zstd2.NewReader(rw.Body)
+	require.NoError(t, err)
 
 	decoded, err := io.ReadAll(r)
 	assert.NoError(t, err)
