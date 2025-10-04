@@ -372,7 +372,10 @@ func TestServer_ServeHTTP_sub(t *testing.T) {
 	vs, err := fs.Sub(v, "testdata")
 	require.NoError(t, err)
 
-	s := statigz.FileServer(vs.(fs.ReadDirFS), brotli.AddEncoding, statigz.EncodeOnInit)
+	rd, ok := vs.(fs.ReadDirFS)
+	require.True(t, ok)
+
+	s := statigz.FileServer(rd, brotli.AddEncoding, statigz.EncodeOnInit)
 
 	for u, found := range map[string]bool{
 		"/favicon.png":         true,
